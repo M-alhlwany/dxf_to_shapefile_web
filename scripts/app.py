@@ -7,7 +7,7 @@ from convert import convert_dxf_to_shapefile
 from convert00 import convert_dxfBorder_to_shapefile
 
 app = Flask(__name__)
-UPLOAD_FOLDER = 'output'
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'output')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # إنشاء مجلد output إذا لم يكن موجودًا
 
 @app.route('/')
@@ -52,9 +52,9 @@ def convert_files():
 def download_file(filename):
     try:
         if filename == 'parcel':
-            file_path = os.path.join(UPLOAD_FOLDER, 'parcel.shp')
+            file_path = 'parcel.shp'
         elif filename == 'border':
-            file_path = os.path.join(UPLOAD_FOLDER, 'border.shp')
+             file_path = 'border.shp'
         else:
             abort(404)
 
@@ -63,4 +63,5 @@ def download_file(filename):
         return str(e)
 
 if __name__ == '__main__':
-    app.run(debug=False,host='0.0.0.0')
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
