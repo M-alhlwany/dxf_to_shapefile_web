@@ -40,9 +40,13 @@ def convert_files():
         border_file.save(border_path)
         excel_file.save(excel_path)
 
-        # Define output paths
-        parcel_shapefile_base = os.path.join(UPLOAD_FOLDER, 'parcel')
-        border_shapefile_base = os.path.join(UPLOAD_FOLDER, 'border')
+        # Define output paths with a base name
+        parcel_shapefile_base = os.path.join(UPLOAD_FOLDER, 'parcel', 'parcel_output')
+        border_shapefile_base = os.path.join(UPLOAD_FOLDER, 'border', 'border_output')
+
+        # Ensure the directories exist
+        os.makedirs(os.path.dirname(parcel_shapefile_base), exist_ok=True)
+        os.makedirs(os.path.dirname(border_shapefile_base), exist_ok=True)
 
         # Convert files
         convert_dxf_to_shapefile(parcel_path, excel_path, parcel_shapefile_base, crs_code)
