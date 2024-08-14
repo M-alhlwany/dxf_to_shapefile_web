@@ -11,7 +11,7 @@ def line_to_polygon(line):
     else:
         return None
 
-def convert_dxf_to_shapefile(dxf_file, xlsx_file, output_shapefile):
+def convert_dxf_to_shapefile(dxf_file, xlsx_file, output_shapefile, crs_code):
     print(f"Loading DXF file: {dxf_file}")
 
     # Check if the DXF file exists
@@ -88,8 +88,6 @@ def convert_dxf_to_shapefile(dxf_file, xlsx_file, output_shapefile):
             polygon = line_to_polygon(geom)
             if polygon:
                 geometries.append(polygon)
-            else:
-                continue
         elif geom.geom_type == 'Polygon':
             geometries.append(geom)
         elif geom.geom_type == 'MultiLineString':
@@ -97,8 +95,8 @@ def convert_dxf_to_shapefile(dxf_file, xlsx_file, output_shapefile):
                 polygon = Polygon([p for line in geom for p in line.coords])
                 if polygon.is_valid:
                     geometries.append(polygon)
-            except:
-                print(f"Failed to convert MultiLineString to Polygon.")
+            except Exception as e:
+                print(f"Failed to convert MultiLineString to Polygon: {e}")
         else:
             print(f"Unsupported geometry type: {geom.geom_type}")
 
@@ -129,7 +127,7 @@ def convert_dxf_to_shapefile(dxf_file, xlsx_file, output_shapefile):
     final_gdf = final_gdf[[col for col in list(schema['properties'].keys()) + ['geometry'] if col in final_gdf.columns]]
 
     # Assign original CRS and reproject to target CRS
-    original_crs = CRS("EPSG:32637")
+    original_crs = CRS.from_string(crs_code)
     target_crs = CRS("EPSG:4326")
     final_gdf.crs = original_crs
 
@@ -140,10 +138,3 @@ def convert_dxf_to_shapefile(dxf_file, xlsx_file, output_shapefile):
     print(f"Saving data to Shapefile: {output_shapefile}")
     final_gdf.to_file(output_shapefile, driver='ESRI Shapefile', encoding='utf-8')
     print(f"Shapefile saved successfully at {output_shapefile}")
-
-if __name__ == "__main__":
-    dxf_file = "../data/parcel.dxf"
-    xlsx_file = "../data/table.xlsx"
-    output_shapefile = "../output/parce.shp"
-
-    convert_dxf_to_shapefile(dxf_file, xlsx_file, output_shapefile)

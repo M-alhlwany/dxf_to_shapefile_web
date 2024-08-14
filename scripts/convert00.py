@@ -11,7 +11,7 @@ def line_to_polygon(line):
     else:
         return None
 
-def convert_dxfBorder_to_shapefile(dxf_file, excel_file, output_shapefile):
+def convert_dxfBorder_to_shapefile(dxf_file, excel_file, output_shapefile, crs_code):
     print(f"Loading DXF file: {dxf_file}")
 
     # تحقق من وجود ملف DXF
@@ -77,8 +77,8 @@ def convert_dxfBorder_to_shapefile(dxf_file, excel_file, output_shapefile):
                     polygon = Polygon([p for line in geom for p in line.coords])
                     if polygon.is_valid:
                         geometries.append(polygon)
-                except:
-                    print(f"Failed to convert MultiLineString to Polygon.")
+                except Exception as e:
+                    print(f"Failed to convert MultiLineString to Polygon: {e}")
             else:
                 print(f"Unsupported geometry type: {geom.geom_type}")
 
@@ -114,7 +114,7 @@ def convert_dxfBorder_to_shapefile(dxf_file, excel_file, output_shapefile):
     gdf = gpd.GeoDataFrame(final_data, geometry='geometry')
 
     # تعيين CRS الأصلي
-    original_crs = CRS("EPSG:32637")  # EPSG:32637 هو EPSG الخاص بنظام الإحداثيات الأصلي
+    original_crs = CRS.from_string(crs_code)  # EPSG:32637 هو EPSG الخاص بنظام الإحداثيات الأصلي
     target_crs = CRS("EPSG:4326")  # EPSG:4326 هو EPSG لنظام الإحداثيات المطلوب
     gdf.crs = original_crs  # تعيين CRS الأصلي
 
@@ -126,10 +126,3 @@ def convert_dxfBorder_to_shapefile(dxf_file, excel_file, output_shapefile):
     print(f"Saving data to Shapefile: {output_shapefile}")
     gdf.to_file(output_shapefile, driver='ESRI Shapefile', encoding='utf-8')
     print(f"Shapefile saved successfully at {output_shapefile}")
-
-if __name__ == "__main__":
-    dxf_file = "../data/border.dxf"
-    excel_file = "../data/table.xlsx"
-    output_shapefile = "../data/border.shp"
-
-    convert_dxfBorder_to_shapefile(dxf_file, excel_file, output_shapefile)

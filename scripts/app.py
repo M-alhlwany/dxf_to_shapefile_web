@@ -5,10 +5,11 @@ import tempfile
 import pandas as pd
 from convert import convert_dxf_to_shapefile
 from convert00 import convert_dxfBorder_to_shapefile
+import zipfile
 
 app = Flask(__name__)
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'output')
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # إنشاء مجلد output إذا لم يكن موجودًا
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # Create output folder if it does not exist
 
 @app.route('/')
 def index():
@@ -17,50 +18,59 @@ def index():
 @app.route('/convert', methods=['POST'])
 def convert_files():
     try:
-        parcel_file = request.files['parcel_file']
-        border_file = request.files['border_file']
-        excel_file = request.files['excel_file']
+        # Retrieve files and CRS code from request
+        parcel_file = request.files.get('parcel_file')
+        border_file = request.files.get('border_file')
+        excel_file = request.files.get('excel_file')
+        crs_code = request.form.get('crs_code')
 
-        # حفظ الملفات بشكل مؤقت
-        parcel_path = os.path.join(tempfile.gettempdir(), 'parcel.dxf')
-        border_path = os.path.join(tempfile.gettempdir(), 'border.dxf')
-        excel_path = os.path.join(tempfile.gettempdir(), 'table.xlsx')
+        if not all([parcel_file, border_file, excel_file, crs_code]):
+            return "Missing one or more required files or fields.", 400
+
+        # Save files temporarily
+        parcel_filename = secure_filename(parcel_file.filename)
+        border_filename = secure_filename(border_file.filename)
+        excel_filename = secure_filename(excel_file.filename)
+
+        parcel_path = os.path.join(tempfile.gettempdir(), parcel_filename)
+        border_path = os.path.join(tempfile.gettempdir(), border_filename)
+        excel_path = os.path.join(tempfile.gettempdir(), excel_filename)
 
         parcel_file.save(parcel_path)
         border_file.save(border_path)
         excel_file.save(excel_path)
 
-        # تعريف مسارات المخرجات
-        parcel_shapefile = os.path.join(UPLOAD_FOLDER, 'parcel.shp')
-        border_shapefile = os.path.join(UPLOAD_FOLDER, 'border.shp')
+        # Define output paths
+        parcel_shapefile_base = os.path.join(UPLOAD_FOLDER, 'parcel')
+        border_shapefile_base = os.path.join(UPLOAD_FOLDER, 'border')
 
-        # تحويل الملفات
-        convert_dxf_to_shapefile(parcel_path, excel_path, parcel_shapefile)
-        convert_dxfBorder_to_shapefile(border_path, excel_path, border_shapefile)
+        # Convert files
+        convert_dxf_to_shapefile(parcel_path, excel_path, parcel_shapefile_base, crs_code)
+        convert_dxfBorder_to_shapefile(border_path, excel_path, border_shapefile_base, crs_code)
 
-        # إرسال ملفات المخرجات للمستخدم
-        return f'''
-            <h1>Files converted successfully!</h1>
-            <p><a href="/download/parcel">Download Parcel Shapefile</a></p>
-            <p><a href="/download/border">Download Border Shapefile</a></p>
-        '''
+        # Create a ZIP file
+        zip_path = os.path.join(UPLOAD_FOLDER, 'shape.zip')
+        with zipfile.ZipFile(zip_path, 'w') as zipf:
+            for shapefile_base in [parcel_shapefile_base, border_shapefile_base]:
+                # Add all files of the shapefile (shp, shx, dbf, prj, etc.) to the ZIP
+                for ext in ['shp', 'shx', 'dbf', 'prj', 'cpg', 'qix']:
+                    file_path = f"{shapefile_base}.{ext}"
+                    if os.path.exists(file_path):
+                        zipf.write(file_path, os.path.basename(file_path))
+
+        # Cleanup temporary files
+        os.remove(parcel_path)
+        os.remove(border_path)
+        os.remove(excel_path)
+
+        # Send ZIP file to user
+        return send_from_directory(UPLOAD_FOLDER, 'shape.zip', as_attachment=True)
 
     except Exception as e:
-        return str(e)
+        # Return a generic error message and log the error
+        print(f"Error: {e}")
+        return "An error occurred during file processing.", 500
 
-@app.route('/download/<filename>', methods=['GET'])
-def download_file(filename):
-    try:
-        if filename == 'parcel':
-            file_path = 'parcel.shp'
-        elif filename == 'border':
-             file_path = 'border.shp'
-        else:
-            abort(404)
-
-        return send_from_directory(UPLOAD_FOLDER, file_path, as_attachment=True)
-    except Exception as e:
-        return str(e)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

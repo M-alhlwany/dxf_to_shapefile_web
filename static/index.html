@@ -6,11 +6,11 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <title>DXF to Shapefile Converter</title>
     <style>
-        h1{
+        h1 {
             margin-top: 30px;
             margin-bottom: 30px;
         }
-        input{
+        input {
             width: 100%;
         }
     </style>
@@ -18,25 +18,29 @@
 <body>
     
     <div class="container-md">
-        <!-- Content here -->        
         <h1>Convert DXF Files to Shapefiles</h1>
-        <form action="/convert" method="POST" enctype="multipart/form-data" class="mb-3" >
+        <form action="/convert" method="POST" enctype="multipart/form-data" class="mb-3">
             <label for="parcel_file" class="form-label">Upload Parcel DXF File:</label>
-            <input class="form-control form-control-sm" type="file" name="parcel_file" id="parcel_file" required>
+            <input class="form-control form-control-sm" type="file" name="parcel_file" id="parcel_file" accept=".dxf" required>
             <br><br>
             <label for="border_file" class="form-label">Upload Border DXF File:</label>
-            <input class="form-control form-control-sm" type="file" name="border_file" id="border_file" required>
+            <input class="form-control form-control-sm" type="file" name="border_file" id="border_file" accept=".dxf" required>
             <br><br>
             <label for="excel_file" class="form-label">Upload Excel File:</label>
-            <input class="form-control form-control-sm" type="file" name="excel_file" id="excel_file" required>
+            <input class="form-control form-control-sm" type="file" name="excel_file" id="excel_file" accept=".xlsx" required>
+            <br><br>
+            <label for="crs_code" class="form-label">Select Coordinate System:</label>
+            <select class="form-control form-control-sm" name="crs_code" id="crs_code" required>
+                <option value="EPSG:32636">UTM Zone 36</option>
+                <option value="EPSG:32637" selected="selected">UTM Zone 37</option>
+                <option value="EPSG:32638">UTM Zone 38</option>
+                <option value="EPSG:32639">UTM Zone 39</option>
+                <option value="EPSG:32640">UTM Zone 40</option>
+            </select>
             <br><br>
             <input class="btn btn-primary" type="submit" value="Convert Files">
-            
         </form>    
     </div>
-
-    
-
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
