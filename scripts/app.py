@@ -1,15 +1,14 @@
-from flask import Flask, render_template, request, send_from_directory, abort
-from werkzeug.utils import secure_filename
 import os
+import zipfile
 import tempfile
-import pandas as pd
+from flask import Flask, request, send_from_directory, after_this_request
+from werkzeug.utils import secure_filename
 from convert import convert_dxf_to_shapefile
 from convert00 import convert_dxfBorder_to_shapefile
-import zipfile
 
 app = Flask(__name__)
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'output')
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # Create output folder if it does not exist
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # Ensure output folder exists
 
 @app.route('/')
 def index():
@@ -40,13 +39,13 @@ def convert_files():
         border_file.save(border_path)
         excel_file.save(excel_path)
 
-        # Define output paths with a base name
-        parcel_shapefile_base = os.path.join(UPLOAD_FOLDER, 'parcel', 'parcel_output')
-        border_shapefile_base = os.path.join(UPLOAD_FOLDER, 'border', 'border_output')
+        # Define output file paths directly in the output folder
+        parcel_shapefile_base = os.path.join(tempfile.gettempdir(), 'parcel')
+        border_shapefile_base = os.path.join(tempfile.gettempdir(), 'border')
 
-        # Ensure the directories exist
-        os.makedirs(os.path.dirname(parcel_shapefile_base), exist_ok=True)
-        os.makedirs(os.path.dirname(border_shapefile_base), exist_ok=True)
+        # Create directories if they don't exist
+        os.makedirs(parcel_shapefile_base, exist_ok=True)
+        os.makedirs(border_shapefile_base, exist_ok=True)
 
         # Convert files
         convert_dxf_to_shapefile(parcel_path, excel_path, parcel_shapefile_base, crs_code)
@@ -55,17 +54,36 @@ def convert_files():
         # Create a ZIP file
         zip_path = os.path.join(UPLOAD_FOLDER, 'shape.zip')
         with zipfile.ZipFile(zip_path, 'w') as zipf:
-            for shapefile_base in [parcel_shapefile_base, border_shapefile_base]:
-                # Add all files of the shapefile (shp, shx, dbf, prj, etc.) to the ZIP
+            # Add all files of the shapefile (shp, shx, dbf, prj, etc.) to the ZIP
+           for shapefile_base in [parcel_shapefile_base, border_shapefile_base]:
                 for ext in ['shp', 'shx', 'dbf', 'prj', 'cpg', 'qix']:
                     file_path = f"{shapefile_base}.{ext}"
                     if os.path.exists(file_path):
-                        zipf.write(file_path, os.path.basename(file_path))
+                        zipf.write(file_path, os.path.relpath(file_path, tempfile.gettempdir()))
+                        print(f"Adding {file_path} to zip")
+                    else:
+                        print(f"File {file_path} not found, skipping...")
 
         # Cleanup temporary files
         os.remove(parcel_path)
         os.remove(border_path)
         os.remove(excel_path)
+
+        # Schedule deletion of the ZIP file and output files after request is complete
+        @after_this_request
+        def remove_files(response):
+            try:
+                os.remove(zip_path)
+                # Remove individual files
+                for shapefile_base in [os.path.join(UPLOAD_FOLDER, 'parcel'), os.path.join(UPLOAD_FOLDER, 'border')]:
+                    for ext in ['shp', 'shx', 'dbf', 'prj', 'cpg', 'qix']:
+                        file_path = f"{shapefile_base}.{ext}"
+                        if os.path.exists(file_path):
+                            os.remove(file_path)
+                print("Temporary files removed successfully.")
+            except Exception as e:
+                print(f"Error removing files: {e}")
+            return response
 
         # Send ZIP file to user
         return send_from_directory(UPLOAD_FOLDER, 'shape.zip', as_attachment=True)
@@ -73,9 +91,7 @@ def convert_files():
     except Exception as e:
         # Return a generic error message and log the error
         print(f"Error: {e}")
-        return "An error occurred during file processing.", 500
-
-
+        return f"An error occurred: {e}", 500
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
