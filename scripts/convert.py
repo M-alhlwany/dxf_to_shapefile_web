@@ -136,5 +136,5 @@ def convert_dxf_to_shapefile(dxf_file, xlsx_file, output_shapefile, crs_code):
 
     # Save to Shapefile
     print(f"Saving data to Shapefile: {output_shapefile}")
-    final_gdf.to_file(output_shapefile, driver='ESRI Shapefile', encoding='utf-8')
+    final_gdf.to_file(os.path.join(output_shapefile, 'parcel.shp'), driver='ESRI Shapefile', encoding='utf-8')
     print(f"Shapefile saved successfully at {output_shapefile}")
