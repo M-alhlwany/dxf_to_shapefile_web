@@ -124,5 +124,5 @@ def convert_dxfBorder_to_shapefile(dxf_file, excel_file, output_shapefile, crs_c
 
     # حفظ البيانات كملف Shapefile مع دعم اللغة العربية
     print(f"Saving data to Shapefile: {output_shapefile}")
-    gdf.to_file(output_shapefile, driver='ESRI Shapefile', encoding='utf-8')
+    gdf.to_file(os.path.join(output_shapefile, 'border.shp'), driver='ESRI Shapefile', encoding='utf-8')
     print(f"Shapefile saved successfully at {output_shapefile}")
